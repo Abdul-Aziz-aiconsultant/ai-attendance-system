@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Attendance & Proctoring SaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-start p-6">
+
+    <div class="max-w-4xl w-full space-y-6">
+        
+        <!-- Header -->
+        <div class="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700 text-center">
+            <h1 class="text-3xl font-bold text-green-400">AI Attendance & Proctoring Portal</h1>
+            <p class="text-sm text-gray-400 mt-1">Facial Verification & Automated Logging System</p>
+        </div>
+
+        <!-- Dashboard Metrics Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 shadow-md flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-400">Total Registered Students</p>
+                    <h3 id="stat-total-students" class="text-2xl font-bold text-blue-400 mt-1">0</h3>
+                </div>
+                <div class="bg-blue-600/20 p-3 rounded-lg text-blue-400 text-xl">👥</div>
+            </div>
+            <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 shadow-md flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-400">Check-ins Today</p>
+                    <h3 id="stat-today-checkins" class="text-2xl font-bold text-green-400 mt-1">0</h3>
+                </div>
+                <div class="bg-green-600/20 p-3 rounded-lg text-green-400 text-xl">✅</div>
+            </div>
+        </div>
+
+        <!-- Main Workspace (Camera & Actions) -->
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            
+            <!-- Live Camera Feed -->
+            <div class="flex flex-col items-center">
+                <video id="webcam" autoplay playsinline width="360" height="270" class="rounded-lg border-2 border-gray-600 bg-black shadow-inner"></video>
+                <canvas id="canvas" class="hidden"></canvas>
+                <p class="text-xs text-gray-400 mt-2 text-center">Position face clearly before registering or verifying.</p>
+            </div>
+
+            <!-- Input & Buttons -->
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Student ID</label>
+                    <input type="text" id="student_id" placeholder="e.g., ST-1001" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-green-400">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Full Name (Registration Only)</label>
+                    <input type="text" id="name" placeholder="e.g., John Doe" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-green-400">
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <button onclick="registerStudent()" class="flex-1 bg-blue-600 hover:bg-blue-500 font-semibold py-2.5 px-3 rounded-lg transition text-sm shadow-md">
+                        📸 Register
+                    </button>
+                    <button onclick="verifyAttendance()" class="flex-1 bg-green-600 hover:bg-green-500 font-semibold py-2.5 px-3 rounded-lg transition text-sm shadow-md">
+                        ✅ Verify
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Response Message Box -->
+        <div id="response-box" class="p-4 rounded-lg hidden text-center font-medium"></div>
+
+        <!-- Attendance Logs & Student Directory Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Attendance Logs Panel -->
+            <div class="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-200">Attendance Logs</h2>
+                    <div class="flex gap-2">
+                        <button onclick="loadDashboardData()" class="bg-gray-700 hover:bg-gray-600 text-xs px-2.5 py-1.5 rounded-md transition">Refresh</button>
+                        <button onclick="exportCSV()" class="bg-blue-600 hover:bg-blue-500 text-xs px-2.5 py-1.5 rounded-md transition font-semibold">📥 Export</button>
+                    </div>
+                </div>
+                <div class="bg-gray-900 rounded-lg p-3 max-h-56 overflow-y-auto border border-gray-700">
+                    <table class="w-full text-left text-xs text-gray-300">
+                        <thead>
+                            <tr class="border-b border-gray-700 text-gray-400">
+                                <th class="pb-2">ID</th>
+                                <th class="pb-2">Name</th>
+                                <th class="pb-2">Time</th>
+                                <th class="pb-2">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-table-body">
+                            <tr><td colspan="4" class="text-center text-gray-500 py-3">Loading logs...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Registered Students Directory -->
+            <div class="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-200">Registered Students</h2>
+                    <button onclick="loadStudentsList()" class="bg-gray-700 hover:bg-gray-600 text-xs px-2.5 py-1.5 rounded-md transition">Refresh</button>
+                </div>
+                <div class="bg-gray-900 rounded-lg p-3 max-h-56 overflow-y-auto border border-gray-700">
+                    <table class="w-full text-left text-xs text-gray-300">
+                        <thead>
+                            <tr class="border-b border-gray-700 text-gray-400">
+                                <th class="pb-2">Student ID</th>
+                                <th class="pb-2">Full Name</th>
+                            </tr>
+                        </thead>
+                        <tbody id="students-table-body">
+                            <tr><td colspan="2" class="text-center text-gray-500 py-3">Loading students...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000";
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const responseBox = document.getElementById('response-box');
+
+        // Initialize webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => { video.srcObject = stream; })
+            .catch(err => { console.error("Webcam error: ", err); });
+
+        function captureFrame() {
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+        }
+
+        async function registerStudent() {
+            const student_id = document.getElementById('student_id').value.trim();
+            const name = document.getElementById('name').value.trim();
+
+            if (!student_id || !name) {
+                showAlert("Please enter both Student ID and Name.", "bg-red-600");
+                return;
+            }
+
+            const blob = await captureFrame();
+            const formData = new FormData();
+            formData.append('student_id', student_id);
+            formData.append('name', name);
+            formData.append('file', blob, 'snapshot.jpg');
+
+            showAlert("Registering face & profile...", "bg-yellow-600");
+
+            try {
+                const res = await fetch(`${API_URL}/api/register`, { method: 'POST', body: formData });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert(data.message, "bg-green-600");
+                    loadDashboardData();
+                } else {
+                    showAlert(data.detail || "Registration failed.", "bg-red-600");
+                }
+            } catch (err) {
+                showAlert("Server connection error.", "bg-red-600");
+            }
+        }
+
+        async function verifyAttendance() {
+            const student_id = document.getElementById('student_id').value.trim();
+            if (!student_id) {
+                showAlert("Please enter your Student ID to verify.", "bg-red-600");
+                return;
+            }
+
+            const blob = await captureFrame();
+            const formData = new FormData();
+            formData.append('student_id', student_id);
+            formData.append('file', blob, 'snapshot.jpg');
+
+            showAlert("Verifying face...", "bg-yellow-600");
+
+            try {
+                const res = await fetch(`${API_URL}/api/verify`, { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if (data.verified) {
+                    showAlert(`Verified! Distance: ${data.distance.toFixed(3)} (Logged)`, "bg-green-600");
+                    loadDashboardData();
+                } else {
+                    showAlert(`Verification Failed. Face mismatch (Distance: ${data.distance.toFixed(3)})`, "bg-red-600");
+                }
+            } catch (err) {
+                showAlert("Server connection error.", "bg-red-600");
+            }
+        }
+
+        async function loadDashboardData() {
+            try {
+                const statsRes = await fetch(`${API_URL}/api/dashboard-stats`);
+                const stats = await statsRes.json();
+                document.getElementById('stat-total-students').innerText = stats.total_students;
+                document.getElementById('stat-today-checkins').innerText = stats.today_checkins;
+
+                const logsRes = await fetch(`${API_URL}/api/attendance`);
+                const logsData = await logsRes.json();
+                const tbody = document.getElementById('logs-table-body');
+                tbody.innerHTML = "";
+
+                if (logsData.attendance_logs && logsData.attendance_logs.length > 0) {
+                    logsData.attendance_logs.forEach(log => {
+                        const tr = document.createElement('tr');
+                        tr.className = "border-b border-gray-800 hover:bg-gray-800/50";
+                        tr.innerHTML = `
+                            <td class="py-2 px-1 font-mono text-green-400">${log.student_id}</td>
+                            <td class="py-2 px-1 text-gray-200">${log.name || 'N/A'}</td>
+                            <td class="py-2 px-1 text-gray-300">${log.timestamp}</td>
+                            <td class="py-2 px-1"><span class="bg-green-900 text-green-300 px-2 py-0.5 rounded text-[10px]">${log.status}</span></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-gray-500 py-3">No attendance records yet.</td></tr>`;
+                }
+
+                loadStudentsList();
+            } catch (err) {
+                console.error("Error loading dashboard data", err);
+            }
+        }
+
+        async function loadStudentsList() {
+            try {
+                const res = await fetch(`${API_URL}/api/students`);
+                const data = await res.json();
+                const tbody = document.getElementById('students-table-body');
+                tbody.innerHTML = "";
+
+                if (data.students && data.students.length > 0) {
+                    data.students.forEach(student => {
+                        const tr = document.createElement('tr');
+                        tr.className = "border-b border-gray-800 hover:bg-gray-800/50";
+                        tr.innerHTML = `
+                            <td class="py-2 px-1 font-mono text-blue-400">${student.student_id}</td>
+                            <td class="py-2 px-1 text-gray-200">${student.name}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="2" class="text-center text-gray-500 py-3">No students registered yet.</td></tr>`;
+                }
+            } catch (err) {
+                console.error("Error loading students list", err);
+            }
+        }
+
+        function exportCSV() {
+            window.location.href = `${API_URL}/api/export-attendance`;
+        }
+
+        function showAlert(message, bgColor) {
+            responseBox.className = `p-4 rounded-lg text-center font-medium ${bgColor} text-white`;
+            responseBox.innerText = message;
+            responseBox.classList.remove('hidden');
+        }
+
+        loadDashboardData();
+    </script>
+</body>
+</html>
